@@ -15,9 +15,7 @@ public class ProductService {
     }
 
     public Product addProduct(Product product) {
-        if(product.getId() != 0)
             return productRepo.save(product);
-        return new Product();
     }
 
     public List<Product> getProducts() {
@@ -25,16 +23,11 @@ public class ProductService {
     }
 
     public Product getProduct(int id) {
-        return productRepo.findById(id).orElse(new Product());
+        return productRepo.findById(id).orElseThrow();
     }
 
     public Product updateProduct(Product product) {
-        Product product1 = productRepo.findById(product.getId()).orElseThrow();
-        if(product1.getId() == product.getId()){
-            return productRepo.save(product);
-        }else{
-            return new Product();
-        }
+        return productRepo.save(product);
     }
 
     public void deleteProduct(int id) {
