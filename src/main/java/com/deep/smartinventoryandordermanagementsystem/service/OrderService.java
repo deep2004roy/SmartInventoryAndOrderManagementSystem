@@ -2,6 +2,8 @@ package com.deep.smartinventoryandordermanagementsystem.service;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.OrderItemRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.OrderRequest;
+import com.deep.smartinventoryandordermanagementsystem.exception.InsufficientStockException;
+import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
 import com.deep.smartinventoryandordermanagementsystem.model.OrderItem;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
@@ -37,13 +39,18 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
         for(OrderItemRequest item : items){
-            Product product1 = productRepo.findById(item.getProductId()).orElseThrow();
+            Product product1 = productRepo.findById(item.getProductId()).orElseThrow(() ->
+                    new ProductNotFoundException("Product not found"));
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct(product1);
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(product1.getPrice());
             orderItem.setOrder(order);
             orderItems.add(orderItem);
+
+            if (orderItem.getQuantity() > product1.getQuantity()){
+                throw new InsufficientStockException(STR."Not enough stock for product: \{product1.getName()}");
+            }
 
             product1.setQuantity(product1.getQuantity() - orderItem.getQuantity());
             productRepo.save(product1);

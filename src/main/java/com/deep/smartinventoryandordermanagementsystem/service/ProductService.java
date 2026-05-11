@@ -1,5 +1,6 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
+import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,8 @@ public class ProductService {
     }
 
     public Product getProduct(int id) {
-        return productRepo.findById(id).orElseThrow();
+        return productRepo.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
     }
 
     public Product updateProduct(Product product) {
