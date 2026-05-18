@@ -1,11 +1,15 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
+import com.deep.smartinventoryandordermanagementsystem.controller.ProductController;
+import com.deep.smartinventoryandordermanagementsystem.dto.CartSummaryItem;
+import com.deep.smartinventoryandordermanagementsystem.dto.CartSummaryResponse;
 import com.deep.smartinventoryandordermanagementsystem.dto.OrderItemRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.OrderRequest;
 import com.deep.smartinventoryandordermanagementsystem.exception.InsufficientStockException;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
 import com.deep.smartinventoryandordermanagementsystem.model.OrderItem;
+import com.deep.smartinventoryandordermanagementsystem.model.OrderStatus;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderItemRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderRepo;
@@ -28,11 +32,17 @@ public class OrderService {
         this.orderItemRepo = orderItemRepo;
     }
 
+    public Order changeStatus(int id, OrderStatus status) {
+        Order order = orderRepo.findById(id).orElseThrow();
+        order.setStatus(status);
+        return orderRepo.save(order);
+    }
+
     public Order createOrder(OrderRequest orderRequest){
         Order order = new Order();
         order.setDate(new Date());
         order.setTotalAmount(0);
-        order.setStatus(true);
+        order.setStatus(OrderStatus.PENDING);
 
         int total = 0;
 
@@ -60,5 +70,40 @@ public class OrderService {
         orderRepo.save(order);
         orderItemRepo.saveAll(orderItems);
         return order;
+    }
+
+    public List<Order> getAllOrders() {
+        return orderRepo.findAll();
+    }
+
+    public Order getProductById(int id) {
+        return orderRepo.findById(id).orElseThrow();
+    }
+
+    public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {
+        List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
+        CartSummaryResponse summaryResponse = new CartSummaryResponse();
+        List<CartSummaryItem> summaryItems = new ArrayList<>();
+        int totalAmount = 0;
+        int totalItems = 0;
+        for(OrderItemRequest item : items){
+            CartSummaryItem summaryItem = new CartSummaryItem();
+            Product product = productRepo.findById(item
+                    .getProductId()).orElseThrow(() -> new ProductNotFoundException("No such product"));
+            int subTotal = product.getPrice() * item.getQuantity();
+            totalAmount += subTotal;
+            totalItems += item.getQuantity();
+            summaryItem.setProductId(product.getId());
+            summaryItem.setProductName(product.getName());
+            summaryItem.setPrice(product.getPrice());
+            summaryItem.setQuantity(item.getQuantity());
+            summaryItem.setSubtotal(subTotal);
+            summaryItems.add(summaryItem);
+        }
+        summaryResponse.setTotalItems(totalItems);
+        summaryResponse.setTotalAmount(totalAmount);
+        summaryResponse.setCartSummaryItems(summaryItems);
+        return summaryResponse;
+
     }
 }

@@ -20,19 +20,34 @@ public class ProductService {
     }
 
     public List<Product> getProducts() {
-        return productRepo.findAll();
+        return productRepo.findAll().stream().filter(product ->
+                product.isActive()).toList();
     }
 
-    public Product getProduct(int id) {
+    public Product getProductById(int id) {
         return productRepo.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+//        return productRepo.getReferenceById(id);
     }
 
-    public Product updateProduct(Product product) {
-        return productRepo.save(product);
+    public Product updateProduct(int id, Product product) {
+        Product product1 = getProductById(id);
+        product1.setName(product.getName());
+        product1.setCategory(product.getCategory());
+        product1.setDescription(product.getDescription());
+        product1.setPrice(product.getPrice());
+        product1.setQuantity(product.getQuantity());
+        product1.setActive(product.isActive());
+        return productRepo.save(product1);
     }
 
     public void deleteProduct(int id) {
-        productRepo.deleteById(id);
+        Product product = getProductById(id);
+        product.setActive(false);
+        productRepo.save(product);
+    }
+
+    public List<Product> searchProducts(String keyword) {
+        return productRepo.findByNameContaining(keyword);
     }
 }

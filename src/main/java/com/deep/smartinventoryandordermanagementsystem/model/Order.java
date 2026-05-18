@@ -15,5 +15,6 @@ public class Order {
     private int id;
     private Date date;
     private int totalAmount;
-    private boolean status;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
 }
