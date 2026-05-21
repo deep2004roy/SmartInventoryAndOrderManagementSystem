@@ -2,6 +2,9 @@ package com.deep.smartinventoryandordermanagementsystem.controller;
 
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.service.ProductService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,9 +23,47 @@ public class ProductController {
         return productService.addProduct(product);
     }
 
+//    @GetMapping("/products")
+//    public List<Product> getProducts(@RequestParam(required = false) String search,
+//                                     @RequestParam(required = false) String category,
+//                                     @RequestParam(required = false) String sort){
+//        if(search != null && !search.isEmpty()){
+//            return productService.searchProducts(search);
+//        }
+//
+//        if(category != null && !category.isEmpty()){
+//            return productService.filterProducts(category);
+//        }
+//
+//        if(sort != null && !sort.isEmpty()){
+//            return productService.sortedByPrice(sort);
+//        }
+//
+//        return productService.getProducts();
+//    }
+
     @GetMapping("/products")
-    public List<Product> getProducts(){
-        return productService.getProducts();
+    public Page<Product> getProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String sort
+    ){
+
+        if(search != null && !search.isEmpty()){
+            return productService.searchProducts(page, size, search);
+        }
+
+        if(category != null && !category.isEmpty()){
+            return productService.filterProducts(page, size, category);
+        }
+
+        if(sort != null && !sort.isEmpty()){
+            return productService.sortedByPrice(page, size, sort);
+        }
+        return  productService.getProducts(page, size);
     }
 
     @GetMapping("/products/{id}")
@@ -42,8 +83,5 @@ public class ProductController {
         return product1;
     }
 
-    @GetMapping("/products/search")
-    public List<Product> searchProducts(@RequestParam String keyword){
-        return productService.searchProducts(keyword);
-    }
+
 }

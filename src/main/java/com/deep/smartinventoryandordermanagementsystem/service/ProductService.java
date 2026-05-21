@@ -3,6 +3,10 @@ package com.deep.smartinventoryandordermanagementsystem.service;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -47,7 +51,30 @@ public class ProductService {
         productRepo.save(product);
     }
 
-    public List<Product> searchProducts(String keyword) {
-        return productRepo.findByNameContaining(keyword);
+    public Page<Product> searchProducts(int page, int size, String search) {
+        Pageable pageable = PageRequest.of(page, size);
+        return productRepo.findByNameContaining(search, pageable);
+    }
+
+    public Page<Product> filterProducts(int page, int size, String category){
+        Pageable pageable = PageRequest.of(page, size);
+        return productRepo.findByCategoryContaining(category, pageable);
+    }
+
+    public Page<Product> sortedByPrice(int page, int size, String sort) {
+        String[] values = sort.split(",");
+        String field = values[0];
+        String direction = values[1];
+
+        Sort sortObj = direction.equals("asc")?Sort.by(field).ascending(): Sort.by(field).descending();
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        return productRepo.findAll(pageable);
+
+    }
+
+    public Page<Product> getProducts(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return productRepo.findAll(pageable);
     }
 }
