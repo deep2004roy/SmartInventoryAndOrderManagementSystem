@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class OrderItemRequest {
     @NotNull
-    private int productId;
+    private Long productId;
     @PositiveOrZero
     private int quantity;
 }

@@ -90,7 +90,7 @@ public class OrderService {
             CartSummaryItem summaryItem = new CartSummaryItem();
             Product product = productRepo.findById(item
                     .getProductId()).orElseThrow(() -> new ProductNotFoundException("No such product"));
-            int subTotal = product.getPrice() * item.getQuantity();
+            Double subTotal = product.getPrice() * item.getQuantity();
             totalAmount += subTotal;
             totalItems += item.getQuantity();
             summaryItem.setProductId(product.getId());

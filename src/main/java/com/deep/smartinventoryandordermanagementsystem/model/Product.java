@@ -1,6 +1,9 @@
 package com.deep.smartinventoryandordermanagementsystem.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 @Data
@@ -8,11 +11,15 @@ import lombok.Data;
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
+    @NotBlank(message = "Product name required")
     private String name;
     private String description;
-    private int price;
-    private int quantity;
+    @Positive(message = "Price must be positive")
+    private Double price;
+    @PositiveOrZero(message = "Quantity cannot be negative")
+    private Integer quantity;
     private String category;
-    private boolean active;
+    private Boolean active;
+    private String imageUrl;
 }

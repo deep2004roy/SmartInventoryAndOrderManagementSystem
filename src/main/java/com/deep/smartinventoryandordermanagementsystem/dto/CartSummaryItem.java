@@ -4,9 +4,9 @@ import lombok.Data;
 
 @Data
 public class CartSummaryItem {
-    private int productId;
+    private Long productId;
     private String productName;
     private int quantity;
-    private int price;
-    private int subtotal;
+    private Double price;
+    private Double subtotal;
 }

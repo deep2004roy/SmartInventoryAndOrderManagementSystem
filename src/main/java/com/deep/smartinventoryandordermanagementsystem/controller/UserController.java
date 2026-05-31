@@ -1,6 +1,7 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.LoginRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
 import com.deep.smartinventoryandordermanagementsystem.model.User;
 import com.deep.smartinventoryandordermanagementsystem.service.UserService;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,12 +22,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request){
+    public LoginResponse login(@RequestBody LoginRequest request){
         return userService.login(request);
-    }
-
-    @GetMapping("/me")
-    public Object me(){
-        return SecurityContextHolder.getContext().getAuthentication().getAuthorities();
     }
 }

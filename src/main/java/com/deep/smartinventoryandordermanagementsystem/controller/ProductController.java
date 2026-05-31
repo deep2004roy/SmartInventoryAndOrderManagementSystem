@@ -2,10 +2,12 @@ package com.deep.smartinventoryandordermanagementsystem.controller;
 
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.service.ProductService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,28 +21,16 @@ public class ProductController {
     }
 
     @PostMapping("/products")
-    public Product addProduct(@RequestBody Product product){
-        return productService.addProduct(product);
+    public Product addProduct(@Valid @RequestParam String name,
+                              @RequestParam String description,
+                              @RequestParam Double price,
+                              @RequestParam Integer quantity,
+                              @RequestParam String category,
+                              @RequestParam Boolean active,
+                              @RequestParam(required = false) MultipartFile image){
+        return productService.addProduct(name, description, price, quantity, category
+        ,active, image);
     }
-
-//    @GetMapping("/products")
-//    public List<Product> getProducts(@RequestParam(required = false) String search,
-//                                     @RequestParam(required = false) String category,
-//                                     @RequestParam(required = false) String sort){
-//        if(search != null && !search.isEmpty()){
-//            return productService.searchProducts(search);
-//        }
-//
-//        if(category != null && !category.isEmpty()){
-//            return productService.filterProducts(category);
-//        }
-//
-//        if(sort != null && !sort.isEmpty()){
-//            return productService.sortedByPrice(sort);
-//        }
-//
-//        return productService.getProducts();
-//    }
 
     @GetMapping("/products")
     public Page<Product> getProducts(
@@ -67,17 +57,17 @@ public class ProductController {
     }
 
     @GetMapping("/products/{id}")
-    public Product getProductById(@PathVariable int id){
+    public Product getProductById(@PathVariable Long id){
         return productService.getProductById(id);
     }
 
     @PutMapping("/products/{id}")
-    public Product updateProductById(@PathVariable int id, @RequestBody Product product){
+    public Product updateProductById(@Valid @PathVariable Long id, @RequestBody Product product){
         return productService.updateProduct(id, product);
     }
 
     @DeleteMapping("/products/{id}")
-    public Product deleteProduct(@PathVariable int id){
+    public Product deleteProduct(@PathVariable Long id){
         Product product1 = getProductById(id);
         productService.deleteProduct(id);
         return product1;

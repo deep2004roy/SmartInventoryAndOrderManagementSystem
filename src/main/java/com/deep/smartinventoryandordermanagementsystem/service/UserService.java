@@ -1,6 +1,7 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.LoginRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
 import com.deep.smartinventoryandordermanagementsystem.model.User;
 import com.deep.smartinventoryandordermanagementsystem.repository.UserRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,16 +24,18 @@ public class UserService {
         return userRepo.save(user);
     }
 
-    public String login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request) {
         User user = userRepo.findUserByUsername(request.getUsername());
         if(user == null){
-            return "User not found";
+            throw new RuntimeException("User not found");
         }
 
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
-        if (matches){
-            return jwtService.generateToken(user.getUsername(), user.getRole());
+        if (!matches){
+            throw new RuntimeException("Wrong password");
         }
-        return "Wrong password";
+
+        String token = jwtService.generateToken(user.getUsername(), user.getRole());
+        return new LoginResponse(token, user.getRole());
     }
 }
