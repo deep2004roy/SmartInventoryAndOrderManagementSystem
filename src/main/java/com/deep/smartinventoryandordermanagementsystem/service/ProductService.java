@@ -71,18 +71,39 @@ public class ProductService {
     public Product getProductById(Long id) {
         return productRepo.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found"));
-//        return productRepo.getReferenceById(id);
     }
 
-    public Product updateProduct(Long id, Product product) {
-        Product product1 = getProductById(id);
-        product1.setName(product.getName());
-        product1.setCategory(product.getCategory());
-        product1.setDescription(product.getDescription());
-        product1.setPrice(product.getPrice());
-        product1.setQuantity(product.getQuantity());
-        product1.setActive(product.getActive());
-        return productRepo.save(product1);
+    public Product updateProduct(Long id, String name,
+                                 String description, Double price,
+                                 Integer quantity, String category,
+                                 Boolean active,
+                                 MultipartFile image) {
+        Product product = getProductById(id);
+        product.setName(name);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setQuantity(quantity);
+        product.setCategory(category);
+        product.setActive(active);
+        try{
+            String uploadDir = "uploads/";
+            if(image != null && !image.isEmpty()){
+                String fileName = image.getOriginalFilename();
+                Path uploadPath = Paths.get(uploadDir);
+                if(!Files.exists(uploadPath)){
+                    Files.createDirectories(uploadPath);
+                }
+                Path filePath = uploadPath.resolve(fileName);
+                Files.copy(image.getInputStream(),
+                        filePath,
+                        StandardCopyOption.REPLACE_EXISTING);
+                product.setImageUrl(fileName);
+            }
+        }catch (IOException e){
+            throw new RuntimeException("Failed to upload image", e);
+        }
+
+        return productRepo.save(product);
     }
 
     public void deleteProduct(Long id) {

@@ -11,7 +11,7 @@ import lombok.Data;
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long productId;
     @NotBlank(message = "Product name required")
     private String name;
     private String description;

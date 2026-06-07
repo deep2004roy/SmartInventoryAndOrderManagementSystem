@@ -7,6 +7,6 @@ import java.util.List;
 @Data
 public class CartSummaryResponse {
     private int totalItems;
-    private int totalAmount;
+    private Double totalAmount;
     private List<CartSummaryItem> cartSummaryItems;
 }

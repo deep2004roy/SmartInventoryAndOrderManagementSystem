@@ -1,11 +1,13 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.CartSummaryResponse;
+import com.deep.smartinventoryandordermanagementsystem.dto.OrderDetailsDTO;
 import com.deep.smartinventoryandordermanagementsystem.dto.OrderRequest;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
 import com.deep.smartinventoryandordermanagementsystem.model.OrderStatus;
 import com.deep.smartinventoryandordermanagementsystem.service.OrderService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,13 +27,15 @@ public class OrderController {
     }
 
     @GetMapping("/orders")
-    public List<Order> getAllOrders() {
-        return orderService.getAllOrders();
+    public Page<Order> getAllOrders(@RequestParam(required = false) OrderStatus status,
+                                    @RequestParam(defaultValue = "0") int page,
+                                    @RequestParam(defaultValue = "12") int size) {
+        return orderService.getAllOrders(status, page, size);
     }
 
     @GetMapping("/orders/{id}")
-    public Order getOrderById(@PathVariable int id){
-        return orderService.getProductById(id);
+    public OrderDetailsDTO getOrderById(@PathVariable int id){
+        return orderService.getOrderById(id);
     }
 
     @PostMapping("/cart/summary")

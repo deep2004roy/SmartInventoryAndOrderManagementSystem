@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers(
                                         "/register",
-                                        "/login")
+                                        "/login", "/uploads/**")
                                 .permitAll()
 
                                 .requestMatchers(HttpMethod.OPTIONS, "/**")

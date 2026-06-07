@@ -62,8 +62,17 @@ public class ProductController {
     }
 
     @PutMapping("/products/{id}")
-    public Product updateProductById(@Valid @PathVariable Long id, @RequestBody Product product){
-        return productService.updateProduct(id, product);
+    public Product updateProductById(@PathVariable Long id,
+                                     @RequestParam String name,
+                                     @RequestParam String description,
+                                     @RequestParam Double price,
+                                     @RequestParam Integer quantity,
+                                     @RequestParam String category,
+                                     @RequestParam Boolean active,
+                                     @RequestParam(required = false) MultipartFile image){
+        return productService.updateProduct(id, name,
+                description, price, quantity, category,
+                active, image);
     }
 
     @DeleteMapping("/products/{id}")

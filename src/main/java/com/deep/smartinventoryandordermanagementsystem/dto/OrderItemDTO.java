@@ -3,11 +3,10 @@ package com.deep.smartinventoryandordermanagementsystem.dto;
 import lombok.Data;
 
 @Data
-public class CartSummaryItem {
+public class OrderItemDTO {
     private Long productId;
     private String productName;
-    private int quantity;
     private Double price;
+    private int quantity;
     private Double subtotal;
-    private String imageUrl;
 }

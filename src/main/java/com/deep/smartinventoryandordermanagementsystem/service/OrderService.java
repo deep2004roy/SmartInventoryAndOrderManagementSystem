@@ -1,10 +1,7 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
 import com.deep.smartinventoryandordermanagementsystem.controller.ProductController;
-import com.deep.smartinventoryandordermanagementsystem.dto.CartSummaryItem;
-import com.deep.smartinventoryandordermanagementsystem.dto.CartSummaryResponse;
-import com.deep.smartinventoryandordermanagementsystem.dto.OrderItemRequest;
-import com.deep.smartinventoryandordermanagementsystem.dto.OrderRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.*;
 import com.deep.smartinventoryandordermanagementsystem.exception.InsufficientStockException;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
@@ -14,6 +11,9 @@ import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderItemRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -41,10 +41,10 @@ public class OrderService {
     public Order createOrder(OrderRequest orderRequest){
         Order order = new Order();
         order.setDate(new Date());
-        order.setTotalAmount(0);
+        order.setTotalAmount(0.0);
         order.setStatus(OrderStatus.PENDING);
 
-        int total = 0;
+        double total = 0.0;
 
         List<OrderItem> orderItems = new ArrayList<>();
         List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
@@ -72,32 +72,57 @@ public class OrderService {
         return order;
     }
 
-    public List<Order> getAllOrders() {
-        return orderRepo.findAll();
+    public Page<Order> getAllOrders(OrderStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        if (status != null) {
+            return orderRepo.findByStatus(status, pageable);
+        }
+        return orderRepo.findAll(pageable);
     }
 
-    public Order getProductById(int id) {
-        return orderRepo.findById(id).orElseThrow();
+    public OrderDetailsDTO getOrderById(int id) {
+        Order order = orderRepo.findById(id).orElseThrow();
+        List<OrderItem> orderItems = orderItemRepo.findByOrder(order);
+        List<OrderItemDTO> itemDTOS = orderItems.stream()
+                .map(item -> {
+                    OrderItemDTO dto = new OrderItemDTO();
+                    dto.setProductId(item.getProduct().getProductId());
+                    dto.setProductName(item.getProduct().getName());
+                    dto.setPrice(item.getPrice());
+                    dto.setQuantity(item.getQuantity());
+                    dto.setSubtotal(item.getPrice() * item.getQuantity());
+                    return dto;
+                }).toList();
+        OrderDetailsDTO dto = new OrderDetailsDTO();
+
+        dto.setId(order.getId());
+        dto.setDate(order.getDate());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setStatus(order.getStatus());
+        dto.setItems(itemDTOS);
+
+        return dto;
     }
 
     public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {
         List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
         CartSummaryResponse summaryResponse = new CartSummaryResponse();
         List<CartSummaryItem> summaryItems = new ArrayList<>();
-        int totalAmount = 0;
+        double totalAmount = 0.00;
         int totalItems = 0;
         for(OrderItemRequest item : items){
             CartSummaryItem summaryItem = new CartSummaryItem();
             Product product = productRepo.findById(item
                     .getProductId()).orElseThrow(() -> new ProductNotFoundException("No such product"));
-            Double subTotal = product.getPrice() * item.getQuantity();
+            double subTotal = product.getPrice() * item.getQuantity();
             totalAmount += subTotal;
             totalItems += item.getQuantity();
-            summaryItem.setProductId(product.getId());
+            summaryItem.setProductId(product.getProductId());
             summaryItem.setProductName(product.getName());
             summaryItem.setPrice(product.getPrice());
             summaryItem.setQuantity(item.getQuantity());
             summaryItem.setSubtotal(subTotal);
+            summaryItem.setImageUrl(product.getImageUrl());
             summaryItems.add(summaryItem);
         }
         summaryResponse.setTotalItems(totalItems);
