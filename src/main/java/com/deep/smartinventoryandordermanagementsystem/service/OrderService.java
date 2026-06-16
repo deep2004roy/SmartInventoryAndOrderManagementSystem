@@ -59,7 +59,9 @@ public class OrderService {
             orderItems.add(orderItem);
 
             if (orderItem.getQuantity() > product1.getQuantity()){
-                throw new InsufficientStockException(STR."Not enough stock for product: \{product1.getName()}");
+                throw new InsufficientStockException(
+                        "Not enough stock for product: " + product1.getName()
+                );
             }
 
             product1.setQuantity(product1.getQuantity() - orderItem.getQuantity());
