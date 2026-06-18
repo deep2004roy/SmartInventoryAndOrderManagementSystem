@@ -4,54 +4,62 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
-    public Map<String, String> handleProductNotFound(
+    public ErrorResponse handleProductNotFound(
             ProductNotFoundException ex){
 
-        return Map.of(
-                "error", ex.getMessage()
+        return new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
         );
     }
 
     @ExceptionHandler(InsufficientStockException.class)
-    public Map<String, String> handleInsufficientStock(
-            InsufficientStockException ex){
-
-        return Map.of(
-                "error", ex.getMessage()
+    public ErrorResponse handleInsufficientStock(InsufficientStockException ex) {
+        return new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
         );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationException(MethodArgumentNotValidException ex){
+    public ErrorResponse handleValidationException(MethodArgumentNotValidException ex){
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult()
                 .getFieldErrors()
                 .forEach(error ->
                         errors.put(error.getField(),
                                 error.getDefaultMessage()));
-        return errors;
+        return new ErrorResponse(
+                "Validation Failed",
+                LocalDateTime.now(),
+                errors
+        );
     }
 
     @ExceptionHandler(DuplicateSkuException.class)
-    public Map<String, String> handleDuplicateSku(DuplicateSkuException ex){
-        return Map.of("error", ex.getMessage());
+    public ErrorResponse handleDuplicateSku(DuplicateSkuException ex) {
+        return new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
+        );
     }
 
-    @ExceptionHandler(
-            DuplicateBarcodeException.class)
-    public Map<String, String>
-    handleDuplicateBarcode(
-            DuplicateBarcodeException ex){
-
-        return Map.of(
-                "error",
-                ex.getMessage()
+    @ExceptionHandler(DuplicateBarcodeException.class)
+    public ErrorResponse handleDuplicateBarcode(DuplicateBarcodeException ex) {
+        return new ErrorResponse(
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
         );
     }
 }

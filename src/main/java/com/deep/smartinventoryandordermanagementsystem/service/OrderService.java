@@ -1,7 +1,10 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
-import com.deep.smartinventoryandordermanagementsystem.controller.ProductController;
-import com.deep.smartinventoryandordermanagementsystem.dto.*;
+import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderDetailsDTO;
+import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderItemDTO;
+import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderSummaryDTO;
+import com.deep.smartinventoryandordermanagementsystem.dto.orderItem.OrderItemRequest;
 import com.deep.smartinventoryandordermanagementsystem.exception.InsufficientStockException;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
@@ -11,13 +14,14 @@ import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderItemRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Service
@@ -32,105 +36,145 @@ public class OrderService {
         this.orderItemRepo = orderItemRepo;
     }
 
-    public Order changeStatus(int id, OrderStatus status) {
-        Order order = orderRepo.findById(id).orElseThrow();
-        order.setStatus(status);
-        return orderRepo.save(order);
-    }
+//    public Order changeStatus(int id, OrderStatus status) {
+//        Order order = orderRepo.findById(id).orElseThrow();
+//        order.setStatus(status);
+//        return orderRepo.save(order);
+//    }
 
+    @Transactional
     public Order createOrder(OrderRequest orderRequest){
         Order order = new Order();
-        order.setDate(new Date());
-        order.setTotalAmount(0.0);
+        order.setCustomerName(orderRequest.getCustomerName());
+        order.setCustomerPhone(orderRequest.getCustomerPhone());
+        order.setShippingAddress(orderRequest.getShippingAddress());
+        order.setPaymentMethod(orderRequest.getPaymentMethod());
+        order.setNotes(orderRequest.getNotes());
         order.setStatus(OrderStatus.PENDING);
 
-        double total = 0.0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<OrderItem> orderItems = new ArrayList<>();
-        List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
-        for(OrderItemRequest item : items){
-            Product product1 = productRepo.findById(item.getProductId()).orElseThrow(() ->
-                    new ProductNotFoundException("Product not found"));
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProduct(product1);
-            orderItem.setQuantity(item.getQuantity());
-            orderItem.setPrice(product1.getPrice());
-            orderItem.setOrder(order);
-            orderItems.add(orderItem);
 
-            if (orderItem.getQuantity() > product1.getQuantity()){
+        for(OrderItemRequest item : orderRequest.getOrderItemRequests()){
+            //fetch product
+            Product product = productRepo.findById(item.getProductId()).orElseThrow(() ->
+                    new ProductNotFoundException("Product not found" + item.getProductId()));
+
+            //validate stock before processing
+            if (item.getQuantity() > product.getQuantity()) {
                 throw new InsufficientStockException(
-                        "Not enough stock for product: " + product1.getName()
+                        "Not enough stock for product: " + product.getName()
                 );
             }
 
-            product1.setQuantity(product1.getQuantity() - orderItem.getQuantity());
-            productRepo.save(product1);
-            total += orderItem.getPrice() * orderItem.getQuantity();
+
+            // price as BigDecimal
+            BigDecimal price = product.getPrice();
+            BigDecimal quantity = BigDecimal.valueOf(item.getQuantity());
+            BigDecimal subtotal = price.multiply(quantity);
+
+            //create order item
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProduct(product);
+            orderItem.setQuantity(item.getQuantity());
+            orderItem.setPrice(product.getPrice());
+            orderItem.setOrder(order);
+            orderItem.setSubtotal(subtotal);
+            orderItem.setProductName(product.getName());
+            orderItem.setProductSku(product.getSku());
+
+            orderItems.add(orderItem);
+
+            totalAmount = totalAmount.add(subtotal);
+
+            //reduce stock
+            product.setQuantity(product.getQuantity() - item.getQuantity());
+            productRepo.save(product);
+
         }
-        order.setTotalAmount(total);
-        orderRepo.save(order);
-        orderItemRepo.saveAll(orderItems);
-        return order;
+        order.setTotalAmount(totalAmount);
+        order.setOrderItems(orderItems);
+        return orderRepo.save(order);
     }
 
-    public Page<Order> getAllOrders(OrderStatus status, int page, int size) {
+    public Page<OrderSummaryDTO> getAllOrders(OrderStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orders;
         if (status != null) {
-            return orderRepo.findByStatus(status, pageable);
+            orders = orderRepo.findByStatus(status, pageable);
+        }else{
+            orders = orderRepo.findAll(pageable);
         }
-        return orderRepo.findAll(pageable);
+        return orders.map(order -> {
+            OrderSummaryDTO dto = new OrderSummaryDTO();
+            dto.setId(order.getId());
+            dto.setOrderNumber(order.getOrderNumber());
+            dto.setCustomerName(order.getCustomerName());
+            dto.setStatus(order.getStatus());
+            dto.setTotalAmount(order.getTotalAmount());
+            dto.setCreatedAt(order.getCreatedAt());
+            return dto;
+        });
     }
 
-    public OrderDetailsDTO getOrderById(int id) {
-        Order order = orderRepo.findById(id).orElseThrow();
-        List<OrderItem> orderItems = orderItemRepo.findByOrder(order);
-        List<OrderItemDTO> itemDTOS = orderItems.stream()
-                .map(item -> {
-                    OrderItemDTO dto = new OrderItemDTO();
-                    dto.setProductId(item.getProduct().getProductId());
-                    dto.setProductName(item.getProduct().getName());
-                    dto.setPrice(item.getPrice());
-                    dto.setQuantity(item.getQuantity());
-                    dto.setSubtotal(item.getPrice() * item.getQuantity());
-                    return dto;
-                }).toList();
+    public OrderDetailsDTO getOrderById(Long id) {
+        Order order = orderRepo.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+
         OrderDetailsDTO dto = new OrderDetailsDTO();
 
         dto.setId(order.getId());
-        dto.setDate(order.getDate());
+        dto.setOrderNumber(order.getOrderNumber());
+        dto.setCustomerName(order.getCustomerName());
+        dto.setCustomerPhone(order.getCustomerPhone());
+        dto.setShippingAddress(order.getShippingAddress());
+        dto.setPaymentMethod(order.getPaymentMethod());
         dto.setTotalAmount(order.getTotalAmount());
         dto.setStatus(order.getStatus());
-        dto.setItems(itemDTOS);
+        dto.setNotes(order.getNotes());
+        dto.setCreatedAt(order.getCreatedAt());
+
+        List<OrderItemDTO> items = order.getOrderItems().stream()
+                .map(item -> {
+                    OrderItemDTO i = new OrderItemDTO();
+                    i.setId(item.getId());
+                    i.setProductName(item.getProductName());
+                    i.setProductSku(item.getProductSku());
+                    i.setQuantity(item.getQuantity());
+                    i.setPrice(item.getPrice());
+                    i.setSubtotal(item.getSubtotal());
+                    return i;
+                }).toList();
+        dto.setOrderItems(items);
 
         return dto;
     }
 
-    public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {
-        List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
-        CartSummaryResponse summaryResponse = new CartSummaryResponse();
-        List<CartSummaryItem> summaryItems = new ArrayList<>();
-        double totalAmount = 0.00;
-        int totalItems = 0;
-        for(OrderItemRequest item : items){
-            CartSummaryItem summaryItem = new CartSummaryItem();
-            Product product = productRepo.findById(item
-                    .getProductId()).orElseThrow(() -> new ProductNotFoundException("No such product"));
-            double subTotal = product.getPrice() * item.getQuantity();
-            totalAmount += subTotal;
-            totalItems += item.getQuantity();
-            summaryItem.setProductId(product.getProductId());
-            summaryItem.setProductName(product.getName());
-            summaryItem.setPrice(product.getPrice());
-            summaryItem.setQuantity(item.getQuantity());
-            summaryItem.setSubtotal(subTotal);
-            summaryItem.setImageUrl(product.getImageUrl());
-            summaryItems.add(summaryItem);
-        }
-        summaryResponse.setTotalItems(totalItems);
-        summaryResponse.setTotalAmount(totalAmount);
-        summaryResponse.setCartSummaryItems(summaryItems);
-        return summaryResponse;
-
-    }
+//    public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {
+//        List<OrderItemRequest> items = orderRequest.getOrderItemRequests();
+//        CartSummaryResponse summaryResponse = new CartSummaryResponse();
+//        List<CartSummaryItem> summaryItems = new ArrayList<>();
+//        double totalAmount = 0.00;
+//        int totalItems = 0;
+//        for(OrderItemRequest item : items){
+//            CartSummaryItem summaryItem = new CartSummaryItem();
+//            Product product = productRepo.findById(item
+//                    .getProductId()).orElseThrow(() -> new ProductNotFoundException("No such product"));
+//            double subTotal = product.getPrice() * item.getQuantity();
+//            totalAmount += subTotal;
+//            totalItems += item.getQuantity();
+//            summaryItem.setProductId(product.getProductId());
+//            summaryItem.setProductName(product.getName());
+//            summaryItem.setPrice(product.getPrice());
+//            summaryItem.setQuantity(item.getQuantity());
+//            summaryItem.setSubtotal(subTotal);
+//            summaryItem.setImageUrl(product.getImageUrl());
+//            summaryItems.add(summaryItem);
+//        }
+//        summaryResponse.setTotalItems(totalItems);
+//        summaryResponse.setTotalAmount(totalAmount);
+//        summaryResponse.setCartSummaryItems(summaryItems);
+//        return summaryResponse;
+//
+//    }
 }

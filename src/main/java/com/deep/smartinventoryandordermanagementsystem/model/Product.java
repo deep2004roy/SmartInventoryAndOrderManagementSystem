@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,8 +21,8 @@ public class Product {
     private String description;
     private String brand;
     private String category;
-    private Double costPrice;
-    private Double price;
+    private BigDecimal costPrice;
+    private BigDecimal price;
     private Integer quantity;
     private Integer reorderLevel;
     private Boolean active = true;

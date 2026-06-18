@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -101,7 +102,7 @@ public class ProductService {
         Product product = getProductById(id);
         product.setName(name);
         product.setDescription(description);
-        product.setPrice(price);
+        product.setPrice(BigDecimal.valueOf(price));
         product.setQuantity(quantity);
         product.setCategory(category);
         product.setActive(active);

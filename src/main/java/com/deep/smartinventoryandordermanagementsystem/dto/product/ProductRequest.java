@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class ProductRequest {
     @NotBlank(message = "SKU is required")
@@ -22,10 +24,10 @@ public class ProductRequest {
     private String category;
 
     @Positive(message = "Cost price must be positive")
-    private Double costPrice;
+    private BigDecimal costPrice;
 
     @Positive(message = "Selling price must be positive")
-    private Double price;
+    private BigDecimal price;
 
     @PositiveOrZero(message = "Quantity cannot be negative")
     private Integer quantity;

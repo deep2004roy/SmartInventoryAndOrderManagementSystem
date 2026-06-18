@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,10 +24,15 @@ public class ProductController {
     }
 
     @PostMapping("/products")
-    public Product addProduct(@Valid @ModelAttribute ProductRequest request,
-                              @RequestParam(required = false)
-                              MultipartFile image){
-        return productService.addProduct(request, image);
+    public ResponseEntity<Product> addProduct(
+            @Valid @ModelAttribute ProductRequest request,
+            @RequestParam(required = false) MultipartFile image) {
+
+        Product createdProduct = productService.addProduct(request, image);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(createdProduct);
     }
 
     @GetMapping("/products")

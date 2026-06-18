@@ -11,16 +11,16 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface OrderRepo extends JpaRepository<Order, Integer> {
+public interface OrderRepo extends JpaRepository<Order, Long> {
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     @Query("SELECT SUM(o.totalAmount) FROM Order o")
     Double getTotalRevenue();
-    List<Order> findTop5ByOrderByDateDesc();
+//    List<Order> findTop5ByOrderByDateDesc();
     long countByStatus(OrderStatus status);
-    @Query("""
-            SELECT MONTH(o.date), SUM(o.totalAmount)
-             FROM Order o
-                   GROUP BY MONTH(o.date)
-                   ORDER BY MONTH(o.date)""")
-    List<Object[]> getMonthlyRevenue();
+//    @Query("""
+//            SELECT MONTH(o.date), SUM(o.totalAmount)
+//             FROM Order o
+//                   GROUP BY MONTH(o.date)
+//                   ORDER BY MONTH(o.date)""")
+//    List<Object[]> getMonthlyRevenue();
 }

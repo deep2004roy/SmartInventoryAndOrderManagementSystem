@@ -1,4 +1,4 @@
-package com.deep.smartinventoryandordermanagementsystem.dto;
+package com.deep.smartinventoryandordermanagementsystem.dto.orderItem;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
