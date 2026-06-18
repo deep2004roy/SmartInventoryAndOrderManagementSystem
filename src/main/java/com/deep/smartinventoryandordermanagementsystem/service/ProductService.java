@@ -1,5 +1,8 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
+import com.deep.smartinventoryandordermanagementsystem.dto.product.ProductRequest;
+import com.deep.smartinventoryandordermanagementsystem.exception.DuplicateBarcodeException;
+import com.deep.smartinventoryandordermanagementsystem.exception.DuplicateSkuException;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
@@ -25,20 +28,37 @@ public class ProductService {
         this.productRepo = productRepo;
     }
 
-    public Product addProduct(String name,
-                              String description,
-                              Double price,
-                              Integer quantity,
-                              String category,
-                              Boolean active,
+    public Product addProduct(ProductRequest request,
                               MultipartFile image) {
+        if(productRepo.existsBySku(request.getSku())){
+            throw new DuplicateSkuException(
+                    "SKU already exists"
+            );
+        }
+
+
+        if(productRepo.existsByBarcode(
+                request.getBarcode())){
+
+            throw new DuplicateBarcodeException(
+                    "Barcode already exists"
+            );
+        }
+
         Product product = new Product();
-        product.setName(name);
-        product.setDescription(description);
-        product.setPrice(price);
-        product.setQuantity(quantity);
-        product.setCategory(category);
-        product.setActive(active);
+
+        product.setSku(request.getSku());
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setBrand(request.getBrand());
+        product.setCostPrice(request.getCostPrice());
+        product.setPrice(request.getPrice());
+        product.setQuantity(request.getQuantity());
+        product.setCategory(request.getCategory());
+        product.setReorderLevel(request.getReorderLevel());
+        product.setActive(request.getActive());
+        product.setBarcode(request.getBarcode());
+        product.setUnit(request.getUnit());
 
         try{
             String uploadDir = "uploads/";

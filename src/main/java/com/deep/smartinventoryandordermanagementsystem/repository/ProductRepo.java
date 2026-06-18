@@ -11,7 +11,11 @@ import java.util.List;
 
 @Repository
 public interface ProductRepo extends JpaRepository<Product, Long> {
+    boolean existsBySku(String sku);
+
+    boolean existsByBarcode(String barcode);
     Page<Product> findByNameContaining(String search, Pageable pageable);
+
 
     Page<Product> findByCategoryContaining(String category, Pageable pageable);
     @Query("SELECT SUM(p.quantity) FROM Product p")

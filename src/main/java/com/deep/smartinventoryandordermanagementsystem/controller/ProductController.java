@@ -1,5 +1,6 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
+import com.deep.smartinventoryandordermanagementsystem.dto.product.ProductRequest;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
 import com.deep.smartinventoryandordermanagementsystem.service.ProductService;
 import jakarta.validation.Valid;
@@ -21,15 +22,10 @@ public class ProductController {
     }
 
     @PostMapping("/products")
-    public Product addProduct(@Valid @RequestParam String name,
-                              @RequestParam String description,
-                              @RequestParam Double price,
-                              @RequestParam Integer quantity,
-                              @RequestParam String category,
-                              @RequestParam Boolean active,
-                              @RequestParam(required = false) MultipartFile image){
-        return productService.addProduct(name, description, price, quantity, category
-        ,active, image);
+    public Product addProduct(@Valid @ModelAttribute ProductRequest request,
+                              @RequestParam(required = false)
+                              MultipartFile image){
+        return productService.addProduct(request, image);
     }
 
     @GetMapping("/products")

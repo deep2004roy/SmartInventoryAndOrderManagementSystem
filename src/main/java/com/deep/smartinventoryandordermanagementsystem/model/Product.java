@@ -1,25 +1,51 @@
 package com.deep.smartinventoryandordermanagementsystem.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
-@Data
+
+import java.time.LocalDateTime;
+
 @Entity
+@Data
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long productId;
-    @NotBlank(message = "Product name required")
+
+    @Column(unique = true)
+    private String sku; //Stock keeping unit
+
     private String name;
     private String description;
-    @Positive(message = "Price must be positive")
-    private Double price;
-    @PositiveOrZero(message = "Quantity cannot be negative")
-    private Integer quantity;
+    private String brand;
     private String category;
-    private Boolean active;
+    private Double costPrice;
+    private Double price;
+    private Integer quantity;
+    private Integer reorderLevel;
+    private Boolean active = true;
     private String imageUrl;
+
+    @Column(unique = true)
+    private String barcode;
+
+    private String unit;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist(){
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate(){
+        updatedAt = LocalDateTime.now();
+    }
+
+
+
 }
