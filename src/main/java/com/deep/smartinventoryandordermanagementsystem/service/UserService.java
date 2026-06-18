@@ -2,6 +2,12 @@ package com.deep.smartinventoryandordermanagementsystem.service;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.LoginRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
+import com.deep.smartinventoryandordermanagementsystem.dto.user.RegisterRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.user.UserResponseDTO;
+import com.deep.smartinventoryandordermanagementsystem.exception.InvalidCredentialsException;
+import com.deep.smartinventoryandordermanagementsystem.exception.UserAlreadyExistsException;
+import com.deep.smartinventoryandordermanagementsystem.exception.UserNotFoundException;
+import com.deep.smartinventoryandordermanagementsystem.model.Role;
 import com.deep.smartinventoryandordermanagementsystem.model.User;
 import com.deep.smartinventoryandordermanagementsystem.repository.UserRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,20 +25,34 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public User register(User user){
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepo.save(user);
+    public UserResponseDTO register(RegisterRequest request){
+        if (userRepo.findUserByUsername(request.getUsername()) != null) {
+            throw new UserAlreadyExistsException("Username already exists");
+        }
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.CUSTOMER);
+        User savedUser = userRepo.save(user);
+
+        return new UserResponseDTO(
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getEmail(),
+                savedUser.getRole());
+
     }
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepo.findUserByUsername(request.getUsername());
         if(user == null){
-            throw new RuntimeException("User not found");
+            throw new UserNotFoundException("User not found");
         }
 
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!matches){
-            throw new RuntimeException("Wrong password");
+            throw new InvalidCredentialsException("Invalid password");
         }
 
         String token = jwtService.generateToken(user.getUsername(), user.getRole());

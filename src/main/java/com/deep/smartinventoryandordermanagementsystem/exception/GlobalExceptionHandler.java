@@ -15,6 +15,7 @@ public class GlobalExceptionHandler {
             ProductNotFoundException ex){
 
         return new ErrorResponse(
+                404,
                 ex.getMessage(),
                 LocalDateTime.now(),
                 null
@@ -24,6 +25,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientStockException.class)
     public ErrorResponse handleInsufficientStock(InsufficientStockException ex) {
         return new ErrorResponse(
+                400,
                 ex.getMessage(),
                 LocalDateTime.now(),
                 null
@@ -39,6 +41,7 @@ public class GlobalExceptionHandler {
                         errors.put(error.getField(),
                                 error.getDefaultMessage()));
         return new ErrorResponse(
+                400,
                 "Validation Failed",
                 LocalDateTime.now(),
                 errors
@@ -48,6 +51,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateSkuException.class)
     public ErrorResponse handleDuplicateSku(DuplicateSkuException ex) {
         return new ErrorResponse(
+                409,
                 ex.getMessage(),
                 LocalDateTime.now(),
                 null
@@ -57,6 +61,37 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateBarcodeException.class)
     public ErrorResponse handleDuplicateBarcode(DuplicateBarcodeException ex) {
         return new ErrorResponse(
+                409,
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
+        );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ErrorResponse handleUserNotFound(UserNotFoundException ex) {
+        return new ErrorResponse(
+                404,
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
+        );
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ErrorResponse handleInvalidCredentials(InvalidCredentialsException ex) {
+        return new ErrorResponse(
+                401,
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
+        );
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ErrorResponse handleUserAlreadyExists(UserAlreadyExistsException ex) {
+        return new ErrorResponse(
+                409,
                 ex.getMessage(),
                 LocalDateTime.now(),
                 null

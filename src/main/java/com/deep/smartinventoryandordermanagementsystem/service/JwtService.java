@@ -1,5 +1,6 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
+import com.deep.smartinventoryandordermanagementsystem.model.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,7 @@ public class JwtService {
     private final String SECRET =
             "mysecretkeymysecretkeymysecretkeymysecretkey";
 
-    public String generateToken(String username, String role){
+    public String generateToken(String username, Role role){
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
