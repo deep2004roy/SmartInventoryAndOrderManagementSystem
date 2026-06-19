@@ -91,7 +91,7 @@ public class ProductService {
 
     public Product getProductById(Long id) {
         return productRepo.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+                .orElseThrow(() -> new ProductNotFoundException("Product not found " + id));
     }
 
     public Product updateProduct(Long id, String name,

@@ -1,10 +1,5 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
-import com.deep.smartinventoryandordermanagementsystem.dto.LoginRequest;
-import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
-import com.deep.smartinventoryandordermanagementsystem.model.User;
-import com.deep.smartinventoryandordermanagementsystem.service.UserService;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @CrossOrigin(origins = "http://localhost:5173")

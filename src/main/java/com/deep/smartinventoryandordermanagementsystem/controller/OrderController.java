@@ -10,7 +10,10 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
@@ -44,10 +47,29 @@ public class OrderController {
 //        return orderService.createCartSummary(orderRequest);
 //    }
 
-//    @PutMapping("/orders/{id}/status/{status}")
-//    public Order changeStatus(@PathVariable int id, @PathVariable OrderStatus status){
-//        return orderService.changeStatus(id, status);
-//    }
+    @PutMapping("/orders/{id}/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Order> changeStatus(
+            @PathVariable Long id,
+            @PathVariable("status") OrderStatus newStatus
+    ) {
+        Order updatedOrder = orderService.changeStatus(id, newStatus);
+        return ResponseEntity.ok(updatedOrder);
+    }
+
+    @GetMapping("/me/orders")
+    public ResponseEntity<List<Order>> getMyOrders() {
+        return ResponseEntity.ok(orderService.getMyOrders());
+    }
+
+    @PutMapping("/orders/{id}/cancel")
+    public ResponseEntity<Order> cancelOrder(
+            @PathVariable Long id) {
+
+        Order cancelledOrder = orderService.cancelOrder(id);
+
+        return ResponseEntity.ok(cancelledOrder);
+    }
 
 
 }

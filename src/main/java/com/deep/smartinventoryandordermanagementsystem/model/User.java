@@ -39,6 +39,6 @@ public class User {
     private LocalDateTime updatedAt;
     private LocalDateTime lastLoginAt;
 
-    @OneToMany(mappedBy = "customer")
+    @OneToMany(mappedBy = "user")
     private List<Order> orders;
 }

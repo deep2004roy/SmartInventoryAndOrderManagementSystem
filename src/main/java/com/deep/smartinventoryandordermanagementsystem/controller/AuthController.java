@@ -1,6 +1,6 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
-import com.deep.smartinventoryandordermanagementsystem.dto.LoginRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.user.LoginRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
 import com.deep.smartinventoryandordermanagementsystem.dto.user.RegisterRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.user.UserResponseDTO;

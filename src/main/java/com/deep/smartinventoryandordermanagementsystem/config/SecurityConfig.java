@@ -30,8 +30,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers(
-                                        "/register",
-                                        "/login", "/uploads/**")
+                                        "/api/auth/**", "/uploads/**")
                                 .permitAll()
 
                                 .requestMatchers(HttpMethod.OPTIONS, "/**")

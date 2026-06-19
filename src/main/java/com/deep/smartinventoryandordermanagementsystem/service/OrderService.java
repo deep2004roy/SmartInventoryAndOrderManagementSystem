@@ -5,48 +5,73 @@ import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderItemDTO;
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderSummaryDTO;
 import com.deep.smartinventoryandordermanagementsystem.dto.orderItem.OrderItemRequest;
-import com.deep.smartinventoryandordermanagementsystem.exception.InsufficientStockException;
-import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
-import com.deep.smartinventoryandordermanagementsystem.model.Order;
-import com.deep.smartinventoryandordermanagementsystem.model.OrderItem;
-import com.deep.smartinventoryandordermanagementsystem.model.OrderStatus;
-import com.deep.smartinventoryandordermanagementsystem.model.Product;
+import com.deep.smartinventoryandordermanagementsystem.exception.*;
+import com.deep.smartinventoryandordermanagementsystem.model.*;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderItemRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
+import com.deep.smartinventoryandordermanagementsystem.repository.UserRepo;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class OrderService {
     private final OrderRepo orderRepo;
     private final ProductRepo productRepo;
     private final OrderItemRepo orderItemRepo;
+    private final UserRepo userRepo;
 
-    public OrderService(OrderRepo orderRepo, ProductRepo productRepo, List<OrderItem> orderItems, OrderItemRepo orderItemRepo) {
+    private boolean isValidTransition(OrderStatus current, OrderStatus next) {
+
+        return switch (current) {
+            case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
+            case CONFIRMED -> next == OrderStatus.SHIPPED || next == OrderStatus.CANCELLED;
+            case SHIPPED -> next == OrderStatus.DELIVERED;
+            case DELIVERED -> false;
+            case CANCELLED -> false;
+        };
+    }
+
+    public OrderService(OrderRepo orderRepo, ProductRepo productRepo, List<OrderItem> orderItems, OrderItemRepo orderItemRepo, UserRepo userRepo) {
         this.orderRepo = orderRepo;
         this.productRepo = productRepo;
         this.orderItemRepo = orderItemRepo;
+        this.userRepo = userRepo;
     }
 
-//    public Order changeStatus(int id, OrderStatus status) {
-//        Order order = orderRepo.findById(id).orElseThrow();
-//        order.setStatus(status);
-//        return orderRepo.save(order);
-//    }
+    public Order changeStatus(Long id, OrderStatus newStatus) {
+        Order order = orderRepo.findById(id).orElseThrow(
+                () -> new OrderNotFoundException("Order not found: " + id));
+        OrderStatus current = order.getStatus();
+        if (!isValidTransition(current, newStatus)) {
+            throw new InvalidOrderStatusException("Cannot change from " + current + " to " + newStatus);
+        }
+        order.setStatus(newStatus);
+        return orderRepo.save(order);
+    }
 
     @Transactional
     public Order createOrder(OrderRequest orderRequest){
         Order order = new Order();
         order.setCustomerName(orderRequest.getCustomerName());
         order.setCustomerPhone(orderRequest.getCustomerPhone());
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User currentUser = userRepo.findUserByUsername(username);
+
+        order.setUser(currentUser);
         order.setShippingAddress(orderRequest.getShippingAddress());
         order.setPaymentMethod(orderRequest.getPaymentMethod());
         order.setNotes(orderRequest.getNotes());
@@ -59,7 +84,7 @@ public class OrderService {
         for(OrderItemRequest item : orderRequest.getOrderItemRequests()){
             //fetch product
             Product product = productRepo.findById(item.getProductId()).orElseThrow(() ->
-                    new ProductNotFoundException("Product not found" + item.getProductId()));
+                    new ProductNotFoundException("Product not found " + item.getProductId()));
 
             //validate stock before processing
             if (item.getQuantity() > product.getQuantity()) {
@@ -119,7 +144,7 @@ public class OrderService {
     }
 
     public OrderDetailsDTO getOrderById(Long id) {
-        Order order = orderRepo.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+        Order order = orderRepo.findById(id).orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
 
         OrderDetailsDTO dto = new OrderDetailsDTO();
 
@@ -148,6 +173,64 @@ public class OrderService {
         dto.setOrderItems(items);
 
         return dto;
+    }
+
+    public List<Order> getMyOrders() {
+
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User currentUser = Optional.ofNullable(
+                userRepo.findUserByUsername(username)
+        ).orElseThrow(() ->
+                new UserNotFoundException("User not found"));
+
+        return orderRepo.findByUser(currentUser);
+    }
+
+    @Transactional
+    public Order cancelOrder(Long orderId) {
+
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException("Order not found: " + orderId));
+
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User currentUser = userRepo.findUserByUsername(username);
+
+
+        if (order.getStatus() == OrderStatus.SHIPPED ||
+                order.getStatus() == OrderStatus.DELIVERED) {
+
+            throw new InvalidOrderStatusException(
+                    "Shipped or delivered orders cannot be cancelled");
+        }
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderStatusException(
+                    "Order is already cancelled");
+        }
+
+        // Restore stock
+        for (OrderItem item : order.getOrderItems()) {
+
+            Product product = item.getProduct();
+
+            product.setQuantity(
+                    product.getQuantity() + item.getQuantity()
+            );
+
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+
+        return orderRepo.save(order);
     }
 
 //    public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {

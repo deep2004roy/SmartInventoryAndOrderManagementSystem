@@ -2,6 +2,7 @@ package com.deep.smartinventoryandordermanagementsystem.repository;
 
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
 import com.deep.smartinventoryandordermanagementsystem.model.OrderStatus;
+import com.deep.smartinventoryandordermanagementsystem.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,4 +24,5 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
 //                   GROUP BY MONTH(o.date)
 //                   ORDER BY MONTH(o.date)""")
 //    List<Object[]> getMonthlyRevenue();
+List<Order> findByUser(User user);
 }
