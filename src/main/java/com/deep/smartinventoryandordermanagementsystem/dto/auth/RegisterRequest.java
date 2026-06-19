@@ -1,4 +1,4 @@
-package com.deep.smartinventoryandordermanagementsystem.dto.user;
+package com.deep.smartinventoryandordermanagementsystem.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

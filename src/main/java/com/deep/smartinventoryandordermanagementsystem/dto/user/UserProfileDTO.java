@@ -4,8 +4,18 @@ import com.deep.smartinventoryandordermanagementsystem.model.Role;
 import lombok.Data;
 
 @Data
-public class LoginRequest {
+public class UserProfileDTO {
+    private Long id;
+
     private String username;
-    private String password;
+
+    private String email;
+
+    private String fullName;
+
+    private String phoneNumber;
+
+    private String address;
+
     private Role role;
 }

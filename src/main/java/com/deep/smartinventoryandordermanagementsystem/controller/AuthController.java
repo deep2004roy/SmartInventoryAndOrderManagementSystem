@@ -1,9 +1,9 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
-import com.deep.smartinventoryandordermanagementsystem.dto.user.LoginRequest;
-import com.deep.smartinventoryandordermanagementsystem.dto.LoginResponse;
-import com.deep.smartinventoryandordermanagementsystem.dto.user.RegisterRequest;
-import com.deep.smartinventoryandordermanagementsystem.dto.user.UserResponseDTO;
+import com.deep.smartinventoryandordermanagementsystem.dto.auth.LoginRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.auth.LoginResponse;
+import com.deep.smartinventoryandordermanagementsystem.dto.auth.RegisterRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.auth.UserResponseDTO;
 import com.deep.smartinventoryandordermanagementsystem.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

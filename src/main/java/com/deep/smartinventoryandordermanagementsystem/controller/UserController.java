@@ -1,23 +1,43 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
+import com.deep.smartinventoryandordermanagementsystem.dto.user.ChangePasswordRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.user.UpdateProfileRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.user.UserProfileDTO;
+import com.deep.smartinventoryandordermanagementsystem.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
 public class UserController {
-//    UserService userService;
-//
-//    public UserController(UserService userService) {
-//        this.userService = userService;
-//    }
-//
-//    @PostMapping("/register")
-//    public User register(@RequestBody User user){
-//        return userService.register(user);
-//    }
-//
-//    @PostMapping("/login")
-//    public LoginResponse login(@RequestBody LoginRequest request){
-//        return userService.login(request);
-//    }
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<String> changePassword(
+            @RequestBody ChangePasswordRequest request) {
+
+        userService.changePassword(request);
+
+        return ResponseEntity.ok(
+                "Password changed successfully"
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileDTO> getCurrentUser() {
+        return ResponseEntity.ok(userService.getCurrentUser());
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileDTO> updateProfile(
+            @RequestBody UpdateProfileRequest request) {
+
+        return ResponseEntity.ok(
+                userService.updateProfile(request)
+        );
+    }
 }

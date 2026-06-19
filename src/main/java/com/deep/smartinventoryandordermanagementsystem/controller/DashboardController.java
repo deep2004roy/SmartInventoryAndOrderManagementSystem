@@ -1,9 +1,14 @@
 package com.deep.smartinventoryandordermanagementsystem.controller;
 
-import com.deep.smartinventoryandordermanagementsystem.dto.DashboardSummary;
+import com.deep.smartinventoryandordermanagementsystem.dto.dashboard.DashboardSummaryDTO;
 import com.deep.smartinventoryandordermanagementsystem.service.DashboardService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+@RestController
+@RequestMapping("/admin/dashboard")
 public class DashboardController {
     private final DashboardService dashboardService;
 
@@ -11,9 +16,12 @@ public class DashboardController {
         this.dashboardService = dashboardService;
     }
 
-//    @GetMapping("/dashboard/summary")
-//    public DashboardSummary getSummary(){
-//       return dashboardService.getSummary();
-//    }
+    @GetMapping("/summary")
+    public ResponseEntity<DashboardSummaryDTO> getSummary(){
+        DashboardSummaryDTO summary =
+                dashboardService.getSummary();
+
+        return ResponseEntity.ok(summary);
+    }
 
 }

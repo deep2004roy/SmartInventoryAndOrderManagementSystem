@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -21,6 +22,39 @@ public interface ProductRepo extends JpaRepository<Product, Long> {
     @Query("SELECT SUM(p.quantity) FROM Product p")
     Long getTotalStock();
 
+    @Query("""
+       SELECT COALESCE(SUM(p.costPrice * p.quantity), 0)
+       FROM Product p
+       """)
+    BigDecimal getInventoryCostValue();
 
-    List<Product> findByQuantityLessThanEqual(Integer quantity);
+    @Query("""
+       SELECT COALESCE(SUM(p.price * p.quantity), 0)
+       FROM Product p
+       """)
+    BigDecimal getInventorySellingValue();
+
+    @Query("""
+       SELECT p
+       FROM Product p
+       WHERE p.quantity <= p.reorderLevel
+       """)
+    List<Product> findProductsBelowReorderLevel();
+
+
+    @Query("""
+       SELECT p
+       FROM Product p
+       WHERE p.quantity = 0
+       """)
+    List<Product> findOutOfStockProducts();
+
+    @Query("""
+       SELECT COUNT(p)
+       FROM Product p
+       WHERE p.quantity <= p.reorderLevel
+       """)
+    long countLowStockProducts();
+
+    long countByQuantity(Integer quantity);
 }

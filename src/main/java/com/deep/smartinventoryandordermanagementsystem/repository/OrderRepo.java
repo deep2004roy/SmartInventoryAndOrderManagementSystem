@@ -9,20 +9,24 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
 public interface OrderRepo extends JpaRepository<Order, Long> {
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     @Query("SELECT SUM(o.totalAmount) FROM Order o")
-    Double getTotalRevenue();
-//    List<Order> findTop5ByOrderByDateDesc();
+    BigDecimal getTotalRevenue();
+    List<Order> findTop5ByOrderByCreatedAtDesc();
     long countByStatus(OrderStatus status);
-//    @Query("""
-//            SELECT MONTH(o.date), SUM(o.totalAmount)
-//             FROM Order o
-//                   GROUP BY MONTH(o.date)
-//                   ORDER BY MONTH(o.date)""")
-//    List<Object[]> getMonthlyRevenue();
+    @Query("""
+       SELECT YEAR(o.createdAt),
+              MONTH(o.createdAt),
+              SUM(o.totalAmount)
+       FROM Order o
+       GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
+       ORDER BY YEAR(o.createdAt), MONTH(o.createdAt)
+       """)
+    List<Object[]> getMonthlyRevenue();
 List<Order> findByUser(User user);
 }
