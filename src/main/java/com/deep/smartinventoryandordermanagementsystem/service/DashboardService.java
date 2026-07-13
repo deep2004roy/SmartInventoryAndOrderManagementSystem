@@ -16,6 +16,7 @@ import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class DashboardService {
@@ -27,6 +28,123 @@ public class DashboardService {
         this.productRepo = productRepo;
         this.orderRepo = orderRepo;
         this.orderItemRepo = orderItemRepo;
+    }
+
+    private InventorySummaryDTO buildInventorySummary(){
+        InventorySummaryDTO inventory = new InventorySummaryDTO();
+        inventory.setTotalProducts(productRepo.count());
+
+        Long totalStock = productRepo.getTotalStock();
+
+        inventory.setTotalStock(
+                totalStock == null ? 0 : totalStock
+        );
+
+        inventory.setLowStockProducts(
+                productRepo.countLowStockProducts()
+        );
+
+        inventory.setOutOfStockProducts(
+                productRepo.countByQuantity(0)
+        );
+
+        BigDecimal inventoryCostValue =
+                productRepo.getInventoryCostValue();
+
+        if (inventoryCostValue == null) {
+            inventoryCostValue = BigDecimal.ZERO;
+        }
+
+        BigDecimal inventorySellingValue =
+                productRepo.getInventorySellingValue();
+
+        if (inventorySellingValue == null) {
+            inventorySellingValue = BigDecimal.ZERO;
+        }
+
+        inventory.setInventoryCostValue(
+                inventoryCostValue
+        );
+
+        inventory.setInventorySellingValue(
+                inventorySellingValue
+        );
+
+        inventory.setPotentialProfit(
+                inventorySellingValue.subtract(
+                        inventoryCostValue
+                )
+        );
+
+        return inventory;
+    }
+
+    private SalesSummaryDTO buildSalesSummary(){
+        SalesSummaryDTO sales = new SalesSummaryDTO();
+        sales.setRevenue(
+                Optional.ofNullable(
+                        orderRepo.getTotalRevenue()
+                ).orElse(BigDecimal.ZERO)
+        );
+
+        sales.setTotalItemsSold(
+                Optional.ofNullable(
+                        orderItemRepo.getTotalItemsSold()
+                ).orElse(0L)
+        );
+
+        sales.setAverageOrderValue(
+                Optional.ofNullable(
+                        orderRepo.getAverageOrderValue()
+                ).orElse(BigDecimal.ZERO)
+        );
+
+        sales.setTotalProfit(
+                Optional.ofNullable(
+                        orderItemRepo.getTotalProfit()
+                ).orElse(BigDecimal.ZERO)
+        );
+        return sales;
+    }
+
+    private OrderSummaryStatsDTO buildOrderSummary(){
+        OrderSummaryStatsDTO orders = new OrderSummaryStatsDTO();
+
+
+
+        orders.setTotalOrders(orderRepo.count());
+
+        orders.setPendingOrders(
+                orderRepo.countByStatus(
+                        OrderStatus.PENDING
+                )
+        );
+
+        orders.setConfirmedOrders(
+                orderRepo.countByStatus(
+                        OrderStatus.CONFIRMED
+                )
+        );
+
+        orders.setShippedOrders(
+                orderRepo.countByStatus(
+                        OrderStatus.SHIPPED
+                )
+        );
+
+        orders.setDeliveredOrders(
+                orderRepo.countByStatus(
+                        OrderStatus.DELIVERED
+                )
+        );
+
+        orders.setCancelledOrders(
+                orderRepo.countByStatus(
+                        OrderStatus.CANCELLED
+                )
+        );
+
+        return orders;
     }
 
 
@@ -43,7 +161,7 @@ public class DashboardService {
         return recentOrders;
     }
 
-    private List<MonthlyRevenueDTO> getMonthlyRevenue(){
+    public List<MonthlyRevenueDTO> getMonthlyRevenue(){
         List<Object[]> results = orderRepo.getMonthlyRevenue();
         List<MonthlyRevenueDTO> monthlyRevenue = new ArrayList<>();
         for(Object[] row : results){
@@ -67,43 +185,14 @@ public class DashboardService {
 
 
    public DashboardSummaryDTO getSummary() {
-        DashboardSummaryDTO summary = new DashboardSummaryDTO();
-        long totalProducts = productRepo.count();
-        summary.setTotalProducts(totalProducts);
-        long totalOrders = orderRepo.count();
-        summary.setTotalOrders(totalOrders);
-        Long totalStock = productRepo.getTotalStock();
-        summary.setTotalStock(totalStock == null ? 0: totalStock.intValue());
-        BigDecimal revenue = orderRepo.getTotalRevenue();
-        summary.setRevenue(revenue == null ? BigDecimal.ZERO : revenue);
-        summary.setLowStockProducts(productRepo.countLowStockProducts());
-        summary.setOutOfStockProducts(productRepo.countByQuantity(0));
-       BigDecimal inventoryCostValue =
-               productRepo.getInventoryCostValue();
+       DashboardSummaryDTO summary = new DashboardSummaryDTO();
 
-       summary.setInventoryCostValue(
-               inventoryCostValue == null
-                       ? BigDecimal.ZERO
-                       : inventoryCostValue
-       );
+       summary.setInventorySummary(buildInventorySummary());
+       summary.setSalesSummary(buildSalesSummary());
+       summary.setOrderSummary(buildOrderSummary());
 
-       BigDecimal inventorySellingValue =
-               productRepo.getInventorySellingValue();
+       summary.setRecentOrders(getRecentOrders());
 
-       summary.setInventorySellingValue(
-               inventorySellingValue == null
-                       ? BigDecimal.ZERO
-                       : inventorySellingValue
-       );
-       summary.setPotentialProfit(
-               inventorySellingValue.subtract(inventoryCostValue)
-       );
-        summary.setRecentOrders(getRecentOrders());
-        summary.setPendingOrders(orderRepo.countByStatus(OrderStatus.PENDING));
-        summary.setConfirmedOrders(orderRepo.countByStatus(OrderStatus.CONFIRMED));
-        summary.setShippedOrders(orderRepo.countByStatus(OrderStatus.SHIPPED));
-        summary.setDeliveredOrders(orderRepo.countByStatus(OrderStatus.DELIVERED));
-        summary.setCancelledOrders(orderRepo.countByStatus(OrderStatus.CANCELLED));
         summary.setMonthlyRevenue(getMonthlyRevenue());
         summary.setTopSellingProducts(getTopSellingProducts());
         return summary;

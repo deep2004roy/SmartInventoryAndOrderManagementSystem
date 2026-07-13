@@ -53,4 +53,27 @@ public class InventoryService {
 
                 }).toList();
     }
+
+    private InventoryAlertDTO mapToInventoryAlertDTO(
+            Product product) {
+
+        InventoryAlertDTO dto =
+                new InventoryAlertDTO();
+
+        dto.setProductId(product.getProductId());
+        dto.setProductName(product.getName());
+        dto.setSku(product.getSku());
+        dto.setCurrentStock(product.getQuantity());
+        dto.setReorderLevel(product.getReorderLevel());
+
+        return dto;
+    }
+
+    public List<InventoryAlertDTO> getLowStockProducts() {
+
+        return productRepo.findLowStockProducts()
+                .stream()
+                .map(this::mapToInventoryAlertDTO)
+                .toList();
+    }
 }

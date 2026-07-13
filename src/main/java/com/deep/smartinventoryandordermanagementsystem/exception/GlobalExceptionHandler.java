@@ -2,6 +2,7 @@ package com.deep.smartinventoryandordermanagementsystem.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,154 +14,159 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleProductNotFound(
-            ProductNotFoundException ex) {
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            HttpStatus status,
+            String message) {
 
         ErrorResponse error = new ErrorResponse(
-                404,
-                ex.getMessage(),
+                status.value(),
+                message,
                 LocalDateTime.now(),
                 null
         );
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        return ResponseEntity
+                .status(status)
+                .body(error);
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductNotFound(
+            ProductNotFoundException ex) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ProductInactiveException.class)
+    public ResponseEntity<ErrorResponse> handleProductInactive(
+            ProductInactiveException ex) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
     }
 
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientStock(
             InsufficientStockException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                400,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
-            MethodArgumentNotValidException ex) {
-
-        Map<String, String> errors = new HashMap<>();
-
-        ex.getBindingResult()
-                .getFieldErrors()
-                .forEach(error ->
-                        errors.put(
-                                error.getField(),
-                                error.getDefaultMessage()
-                        ));
-
-        ErrorResponse errorResponse = new ErrorResponse(
-                400,
-                "Validation Failed",
-                LocalDateTime.now(),
-                errors
-        );
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(errorResponse);
     }
 
     @ExceptionHandler(DuplicateSkuException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateSku(
             DuplicateSkuException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                409,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(DuplicateBarcodeException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateBarcode(
             DuplicateBarcodeException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                409,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(
             UserNotFoundException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                404,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                401,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(
             UserAlreadyExistsException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                409,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(OrderNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleOrderNotFound(
             OrderNotFoundException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                404,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
         );
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(InvalidOrderStatusException.class)
     public ResponseEntity<ErrorResponse> handleInvalidOrderStatus(
             InvalidOrderStatusException ex) {
 
-        ErrorResponse error = new ErrorResponse(
-                400,
-                ex.getMessage(),
-                LocalDateTime.now(),
-                null
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
         );
+    }
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex) {
+
+        return buildErrorResponse(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(InvalidSortParameterException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSortParameter(
+            InvalidSortParameterException ex) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(
+            Exception ex) {
+
+        return buildErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred"
+        );
     }
 }

@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin/inventory")
-@PreAuthorize("hasRole('ADMIN')")
+@RequestMapping("/api/inventory")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
 public class InventoryController {
     private final InventoryService inventoryService;
 
@@ -22,7 +22,7 @@ public class InventoryController {
         this.inventoryService = inventoryService;
     }
 
-    @GetMapping("/alerts")
+    @GetMapping
     public ResponseEntity<List<InventoryAlertDTO>>
     getInventoryAlerts() {
 
@@ -37,6 +37,15 @@ public class InventoryController {
 
         return ResponseEntity.ok(
                 inventoryService.getOutOfStockProducts()
+        );
+    }
+
+    @GetMapping("/low-stock")
+    public ResponseEntity<List<InventoryAlertDTO>>
+    getLowStockProducts() {
+
+        return ResponseEntity.ok(
+                inventoryService.getLowStockProducts()
         );
     }
 }

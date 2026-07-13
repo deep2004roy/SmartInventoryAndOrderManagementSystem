@@ -14,6 +14,7 @@ public class OrderItem {
     private Long id;
     private Integer quantity;
     private BigDecimal price;
+    private BigDecimal costPrice;
     private BigDecimal subtotal;
     private String productName;
     private String productSku;

@@ -2,6 +2,7 @@ package com.deep.smartinventoryandordermanagementsystem.controller;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderDetailsDTO;
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderStatusUpdateRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderSummaryDTO;
 import com.deep.smartinventoryandordermanagementsystem.model.Order;
 import com.deep.smartinventoryandordermanagementsystem.model.OrderStatus;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
+@RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orderService;
 
@@ -24,20 +26,38 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping("/orders")
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody OrderRequest orderRequest){
-        Order order = orderService.createOrder(orderRequest);
+    @PostMapping
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
+    public ResponseEntity<OrderSummaryDTO> createOrder(@Valid @RequestBody OrderRequest orderRequest){
+        OrderSummaryDTO order = orderService.createOrder(orderRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
-    @GetMapping("/orders")
-    public ResponseEntity<Page<OrderSummaryDTO>> getAllOrders(@RequestParam(required = false) OrderStatus status,
-                                                              @RequestParam(defaultValue = "0") int page,
-                                                              @RequestParam(defaultValue = "12") int size) {
-        return ResponseEntity.ok(orderService.getAllOrders(status, page, size));
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<Page<OrderSummaryDTO>> getAllOrders(
+
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String sort
+    ) {
+
+        return ResponseEntity.ok(
+                orderService.getOrders(
+                        page,
+                        size,
+                        search,
+                        status,
+                        sort
+                )
+        );
     }
 
-    @GetMapping("/orders/{id}")
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<OrderDetailsDTO> getOrderById(@PathVariable Long id) {
         return ResponseEntity.ok(orderService.getOrderById(id));
     }
@@ -47,26 +67,43 @@ public class OrderController {
 //        return orderService.createCartSummary(orderRequest);
 //    }
 
-    @PutMapping("/orders/{id}/status/{status}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Order> changeStatus(
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<OrderSummaryDTO> changeStatus(
             @PathVariable Long id,
-            @PathVariable("status") OrderStatus newStatus
+            @RequestBody OrderStatusUpdateRequest request
     ) {
-        Order updatedOrder = orderService.changeStatus(id, newStatus);
+        OrderSummaryDTO  updatedOrder = orderService.changeStatus(id, request.getStatus());
         return ResponseEntity.ok(updatedOrder);
     }
 
-    @GetMapping("/me/orders")
-    public ResponseEntity<List<Order>> getMyOrders() {
-        return ResponseEntity.ok(orderService.getMyOrders());
+    @GetMapping("/my-orders")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<Page<OrderSummaryDTO>> getMyOrders(
+
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String sort
+    ) {
+
+        return ResponseEntity.ok(
+                orderService.getMyOrders(
+                        page,
+                        size,
+                        status,
+                        sort
+                )
+        );
     }
 
-    @PutMapping("/orders/{id}/cancel")
-    public ResponseEntity<Order> cancelOrder(
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN','CUSTOMER')")
+    public ResponseEntity<OrderSummaryDTO> cancelOrder(
             @PathVariable Long id) {
 
-        Order cancelledOrder = orderService.cancelOrder(id);
+        OrderSummaryDTO cancelledOrder = orderService.cancelOrder(id);
 
         return ResponseEntity.ok(cancelledOrder);
     }

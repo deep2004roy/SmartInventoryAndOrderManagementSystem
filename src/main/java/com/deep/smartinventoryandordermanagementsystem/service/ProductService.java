@@ -1,10 +1,13 @@
 package com.deep.smartinventoryandordermanagementsystem.service;
 
 import com.deep.smartinventoryandordermanagementsystem.dto.product.ProductRequest;
+import com.deep.smartinventoryandordermanagementsystem.dto.product.ProductResponseDTO;
 import com.deep.smartinventoryandordermanagementsystem.exception.DuplicateBarcodeException;
 import com.deep.smartinventoryandordermanagementsystem.exception.DuplicateSkuException;
+import com.deep.smartinventoryandordermanagementsystem.exception.InvalidSortParameterException;
 import com.deep.smartinventoryandordermanagementsystem.exception.ProductNotFoundException;
 import com.deep.smartinventoryandordermanagementsystem.model.Product;
+import com.deep.smartinventoryandordermanagementsystem.model.StockMovementType;
 import com.deep.smartinventoryandordermanagementsystem.repository.ProductRepo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,12 +27,37 @@ import java.util.List;
 @Service
 public class ProductService {
     private final ProductRepo productRepo;
+    private final StockMovementService stockMovementService;
 
-    public ProductService(ProductRepo productRepo) {
+    public ProductService(ProductRepo productRepo, StockMovementService stockMovementService) {
         this.productRepo = productRepo;
+        this.stockMovementService = stockMovementService;
     }
 
-    public Product addProduct(ProductRequest request,
+    private ProductResponseDTO mapToDto(Product product) {
+
+        ProductResponseDTO dto =
+                new ProductResponseDTO();
+
+        dto.setProductId(product.getProductId());
+        dto.setSku(product.getSku());
+        dto.setName(product.getName());
+        dto.setDescription(product.getDescription());
+        dto.setBrand(product.getBrand());
+        dto.setCategory(product.getCategory());
+        dto.setCostPrice(product.getCostPrice());
+        dto.setPrice(product.getPrice());
+        dto.setQuantity(product.getQuantity());
+        dto.setReorderLevel(product.getReorderLevel());
+        dto.setActive(product.getActive());
+        dto.setBarcode(product.getBarcode());
+        dto.setUnit(product.getUnit());
+        dto.setImageUrl(product.getImageUrl());
+
+        return dto;
+    }
+
+    public ProductResponseDTO  addProduct(ProductRequest request,
                               MultipartFile image) {
         if(productRepo.existsBySku(request.getSku())){
             throw new DuplicateSkuException(
@@ -81,82 +109,165 @@ public class ProductService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload image", e);
         }
-            return productRepo.save(product);
+        Product savedProduct = productRepo.save(product);
+
+        stockMovementService.recordMovement(
+                savedProduct,
+                savedProduct.getQuantity(),
+                StockMovementType.PURCHASE,
+                "INITIAL-STOCK"
+        );
+
+        return mapToDto(savedProduct);
     }
 
-    public List<Product> getProducts() {
-        return productRepo.findAll().stream().filter(product ->
-                Boolean.TRUE.equals(product.getActive())).toList();
+
+    public ProductResponseDTO getProductById(Long id) {
+
+        Product product = productRepo.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                                "Product not found " + id
+                        ));
+
+        return mapToDto(product);
     }
 
-    public Product getProductById(Long id) {
-        return productRepo.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found " + id));
-    }
-
-    public Product updateProduct(Long id, String name,
-                                 String description, Double price,
+    public ProductResponseDTO  updateProduct(Long id, String name,
+                                 String description, BigDecimal price,
                                  Integer quantity, String category,
                                  Boolean active,
                                  MultipartFile image) {
-        Product product = getProductById(id);
+
+        Product product = productRepo.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                                "Product not found " + id
+                        ));
+
+        int oldQuantity = product.getQuantity();
+
         product.setName(name);
         product.setDescription(description);
-        product.setPrice(BigDecimal.valueOf(price));
-        product.setQuantity(quantity);
+        product.setPrice(price);
         product.setCategory(category);
         product.setActive(active);
-        try{
+
+
+        product.setQuantity(quantity);
+
+        try {
             String uploadDir = "uploads/";
-            if(image != null && !image.isEmpty()){
+            if (image != null && !image.isEmpty()) {
                 String fileName = image.getOriginalFilename();
                 Path uploadPath = Paths.get(uploadDir);
-                if(!Files.exists(uploadPath)){
+
+                if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
                 }
+
                 Path filePath = uploadPath.resolve(fileName);
                 Files.copy(image.getInputStream(),
                         filePath,
                         StandardCopyOption.REPLACE_EXISTING);
+
                 product.setImageUrl(fileName);
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             throw new RuntimeException("Failed to upload image", e);
         }
 
-        return productRepo.save(product);
+        Product savedProduct = productRepo.save(product);
+
+        int diff = quantity - oldQuantity;
+
+        if (diff != 0) {
+            stockMovementService.recordMovement(
+                    savedProduct,
+                    diff,
+                    StockMovementType.ADJUSTMENT,
+                    "ADMIN-UPDATE"
+            );
+        }
+
+        return mapToDto(savedProduct);
     }
 
     public void deleteProduct(Long id) {
-        Product product = getProductById(id);
+        Product product = productRepo.findById(id).orElseThrow(() -> new ProductNotFoundException("Product not found " + id));
         product.setActive(false);
         productRepo.save(product);
     }
 
-    public Page<Product> searchProducts(int page, int size, String search) {
-        Pageable pageable = PageRequest.of(page, size);
-        return productRepo.findByNameContaining(search, pageable);
-    }
+    private static final List<String> ALLOWED_SORT_FIELDS = List.of(
+            "name",
+            "price",
+            "quantity",
+            "category",
+            "brand",
+            "createdAt"
+    );
 
-    public Page<Product> filterProducts(int page, int size, String category){
-        Pageable pageable = PageRequest.of(page, size);
-        return productRepo.findByCategoryContaining(category, pageable);
-    }
+    private Sort buildSort(String sort) {
 
-    public Page<Product> sortedByPrice(int page, int size, String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.unsorted();
+        }
+
         String[] values = sort.split(",");
-        String field = values[0];
-        String direction = values[1];
 
-        Sort sortObj = direction.equals("asc")?Sort.by(field).ascending(): Sort.by(field).descending();
-        Pageable pageable = PageRequest.of(page, size, sortObj);
+        if (values.length != 2) {
+            throw new InvalidSortParameterException(
+                    "Sort format should be field,direction"
+            );
+        }
 
-        return productRepo.findAll(pageable);
+        String field = values[0].trim();
+        String direction = values[1].trim();
 
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            throw new InvalidSortParameterException(
+                    "Invalid sort field: " + field
+            );
+        }
+
+        if (!direction.equalsIgnoreCase("asc")
+                && !direction.equalsIgnoreCase("desc")) {
+
+            throw new InvalidSortParameterException(
+                    "Sort direction must be asc or desc"
+            );
+        }
+
+        return direction.equalsIgnoreCase("asc")
+                ? Sort.by(field).ascending()
+                : Sort.by(field).descending();
     }
 
-    public Page<Product> getProducts(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return productRepo.findAll(pageable);
+
+    public Page<ProductResponseDTO> getProducts(
+            int page,
+            int size,
+            String search,
+            String category,
+            Boolean active,
+            String sort
+    ) {
+
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        buildSort(sort)
+                );
+
+        return productRepo
+                .findProducts(
+                        search,
+                        category,
+                        active,
+                        pageable
+                )
+                .map(this::mapToDto);
     }
 }

@@ -7,31 +7,10 @@ import java.util.List;
 
 @Data
 public class DashboardSummaryDTO {
-    private long totalProducts;
-    private long totalStock;
-    private long lowStockProducts;
-    private long outOfStockProducts;
-    private BigDecimal inventoryCostValue;
-    private BigDecimal inventorySellingValue;
-    private BigDecimal potentialProfit;
-
-
-    private long totalOrders;
-    private long pendingOrders;
-    private long confirmedOrders;
-    private long shippedOrders;
-    private long deliveredOrders;
-    private long cancelledOrders;
-    private List<RecentOrderDTO> recentOrders;
-
-    private BigDecimal revenue;
+    private InventorySummaryDTO inventorySummary;
+    private SalesSummaryDTO salesSummary;
+    private OrderSummaryStatsDTO orderSummary;
     private List<MonthlyRevenueDTO> monthlyRevenue;
     private List<TopSellingProductDTO> topSellingProducts;
-
-
-
-
-
-
-
+    private List<RecentOrderDTO> recentOrders;
 }

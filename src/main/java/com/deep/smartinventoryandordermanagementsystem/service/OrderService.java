@@ -6,6 +6,7 @@ import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderRequest;
 import com.deep.smartinventoryandordermanagementsystem.dto.order.OrderSummaryDTO;
 import com.deep.smartinventoryandordermanagementsystem.dto.orderItem.OrderItemRequest;
 import com.deep.smartinventoryandordermanagementsystem.exception.*;
+import com.deep.smartinventoryandordermanagementsystem.exception.IllegalArgumentException;
 import com.deep.smartinventoryandordermanagementsystem.model.*;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderItemRepo;
 import com.deep.smartinventoryandordermanagementsystem.repository.OrderRepo;
@@ -15,6 +16,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -27,8 +29,98 @@ import java.util.Optional;
 public class OrderService {
     private final OrderRepo orderRepo;
     private final ProductRepo productRepo;
-    private final OrderItemRepo orderItemRepo;
     private final UserRepo userRepo;
+    private final StockMovementService stockMovementService;
+
+    public OrderService(OrderRepo orderRepo,
+                        ProductRepo productRepo,
+                        OrderItemRepo orderItemRepo,
+                        UserRepo userRepo,
+                        StockMovementService stockMovementService) {
+
+        this.orderRepo = orderRepo;
+        this.productRepo = productRepo;
+        this.userRepo = userRepo;
+        this.stockMovementService = stockMovementService;
+    }
+
+    private OrderSummaryDTO mapToOrderSummaryDTO(Order order) {
+
+        OrderSummaryDTO dto = new OrderSummaryDTO();
+
+        dto.setId(order.getId());
+        dto.setOrderNumber(order.getOrderNumber());
+        dto.setCustomerName(order.getCustomerName());
+        dto.setStatus(order.getStatus());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setCreatedAt(order.getCreatedAt());
+
+        return dto;
+    }
+
+    private OrderDetailsDTO mapToOrderDetailsDTO(Order order) {
+
+        OrderDetailsDTO dto = new OrderDetailsDTO();
+
+        dto.setId(order.getId());
+        dto.setOrderNumber(order.getOrderNumber());
+        dto.setCustomerName(order.getCustomerName());
+        dto.setCustomerPhone(order.getCustomerPhone());
+        dto.setShippingAddress(order.getShippingAddress());
+        dto.setPaymentMethod(order.getPaymentMethod());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setStatus(order.getStatus());
+        dto.setNotes(order.getNotes());
+        dto.setCreatedAt(order.getCreatedAt());
+
+        List<OrderItemDTO> items = order.getOrderItems()
+                .stream()
+                .map(item -> {
+
+                    OrderItemDTO itemDto =
+                            new OrderItemDTO();
+
+                    itemDto.setId(item.getId());
+                    itemDto.setProductName(item.getProductName());
+                    itemDto.setProductSku(item.getProductSku());
+                    itemDto.setQuantity(item.getQuantity());
+                    itemDto.setPrice(item.getPrice());
+                    itemDto.setSubtotal(item.getSubtotal());
+
+                    return itemDto;
+                })
+                .toList();
+
+        dto.setOrderItems(items);
+
+        return dto;
+    }
+
+    private User getCurrentUser() {
+
+        String username =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        return Optional.ofNullable(
+                userRepo.findUserByUsername(username)
+        ).orElseThrow(() ->
+                new UserNotFoundException(
+                        "User not found"
+                ));
+    }
+
+
+    private Order getOrderEntity(Long id) {
+
+        return orderRepo.findById(id)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(
+                                "Order not found: " + id
+                        ));
+    }
 
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
 
@@ -41,35 +133,30 @@ public class OrderService {
         };
     }
 
-    public OrderService(OrderRepo orderRepo, ProductRepo productRepo, List<OrderItem> orderItems, OrderItemRepo orderItemRepo, UserRepo userRepo) {
-        this.orderRepo = orderRepo;
-        this.productRepo = productRepo;
-        this.orderItemRepo = orderItemRepo;
-        this.userRepo = userRepo;
-    }
+    public OrderSummaryDTO  changeStatus(Long id, OrderStatus newStatus) {
 
-    public Order changeStatus(Long id, OrderStatus newStatus) {
-        Order order = orderRepo.findById(id).orElseThrow(
-                () -> new OrderNotFoundException("Order not found: " + id));
+        Order order = getOrderEntity(id);
         OrderStatus current = order.getStatus();
         if (!isValidTransition(current, newStatus)) {
             throw new InvalidOrderStatusException("Cannot change from " + current + " to " + newStatus);
         }
         order.setStatus(newStatus);
-        return orderRepo.save(order);
+        Order savedOrder = orderRepo.save(order);
+
+        return mapToOrderSummaryDTO(savedOrder);
     }
 
     @Transactional
-    public Order createOrder(OrderRequest orderRequest){
+    public OrderSummaryDTO  createOrder(OrderRequest orderRequest){
+        if(orderRequest.getOrderItemRequests().isEmpty()){
+            throw new IllegalArgumentException(
+                    "Order must contain at least one item"
+            );
+        }
         Order order = new Order();
         order.setCustomerName(orderRequest.getCustomerName());
         order.setCustomerPhone(orderRequest.getCustomerPhone());
-        String username = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
-        User currentUser = userRepo.findUserByUsername(username);
+        User currentUser = getCurrentUser();
 
         order.setUser(currentUser);
         order.setShippingAddress(orderRequest.getShippingAddress());
@@ -81,10 +168,20 @@ public class OrderService {
 
         List<OrderItem> orderItems = new ArrayList<>();
 
+        order.setOrderNumber(
+                "ORD-" + System.currentTimeMillis()
+        );
+
         for(OrderItemRequest item : orderRequest.getOrderItemRequests()){
             //fetch product
             Product product = productRepo.findById(item.getProductId()).orElseThrow(() ->
                     new ProductNotFoundException("Product not found " + item.getProductId()));
+
+            if (!Boolean.TRUE.equals(product.getActive())) {
+                throw new ProductInactiveException(
+                        "Product is inactive"
+                );
+            }
 
             //validate stock before processing
             if (item.getQuantity() > product.getQuantity()) {
@@ -104,6 +201,7 @@ public class OrderService {
             orderItem.setProduct(product);
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(product.getPrice());
+            orderItem.setCostPrice(product.getCostPrice());
             orderItem.setOrder(order);
             orderItem.setSubtotal(subtotal);
             orderItem.setProductName(product.getName());
@@ -117,10 +215,19 @@ public class OrderService {
             product.setQuantity(product.getQuantity() - item.getQuantity());
             productRepo.save(product);
 
+            stockMovementService.recordMovement(
+                    product,
+                    -item.getQuantity(),
+                    StockMovementType.ORDER,
+                    order.getOrderNumber()
+            );
+
         }
         order.setTotalAmount(totalAmount);
         order.setOrderItems(orderItems);
-        return orderRepo.save(order);
+        Order savedOrder = orderRepo.save(order);
+
+        return mapToOrderSummaryDTO(savedOrder);
     }
 
     public Page<OrderSummaryDTO> getAllOrders(OrderStatus status, int page, int size) {
@@ -131,78 +238,151 @@ public class OrderService {
         }else{
             orders = orderRepo.findAll(pageable);
         }
-        return orders.map(order -> {
-            OrderSummaryDTO dto = new OrderSummaryDTO();
-            dto.setId(order.getId());
-            dto.setOrderNumber(order.getOrderNumber());
-            dto.setCustomerName(order.getCustomerName());
-            dto.setStatus(order.getStatus());
-            dto.setTotalAmount(order.getTotalAmount());
-            dto.setCreatedAt(order.getCreatedAt());
-            return dto;
-        });
+        return orders.map(this::mapToOrderSummaryDTO);
+    }
+
+    private boolean canViewAllOrders(User user) {
+        return user.getRole() == Role.ADMIN
+                || user.getRole() == Role.MANAGER
+                || user.getRole() == Role.STAFF;
     }
 
     public OrderDetailsDTO getOrderById(Long id) {
-        Order order = orderRepo.findById(id).orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
 
-        OrderDetailsDTO dto = new OrderDetailsDTO();
+        Order order = getOrderEntity(id);
+        User currentUser = getCurrentUser();
 
-        dto.setId(order.getId());
-        dto.setOrderNumber(order.getOrderNumber());
-        dto.setCustomerName(order.getCustomerName());
-        dto.setCustomerPhone(order.getCustomerPhone());
-        dto.setShippingAddress(order.getShippingAddress());
-        dto.setPaymentMethod(order.getPaymentMethod());
-        dto.setTotalAmount(order.getTotalAmount());
-        dto.setStatus(order.getStatus());
-        dto.setNotes(order.getNotes());
-        dto.setCreatedAt(order.getCreatedAt());
+        if (!canViewAllOrders(currentUser)
+                && !order.getUser().getId().equals(currentUser.getId())) {
 
-        List<OrderItemDTO> items = order.getOrderItems().stream()
-                .map(item -> {
-                    OrderItemDTO i = new OrderItemDTO();
-                    i.setId(item.getId());
-                    i.setProductName(item.getProductName());
-                    i.setProductSku(item.getProductSku());
-                    i.setQuantity(item.getQuantity());
-                    i.setPrice(item.getPrice());
-                    i.setSubtotal(item.getSubtotal());
-                    return i;
-                }).toList();
-        dto.setOrderItems(items);
+            throw new AccessDeniedException(
+                    "You are not allowed to access this order"
+            );
+        }
 
-        return dto;
+        return mapToOrderDetailsDTO(order);
     }
 
-    public List<Order> getMyOrders() {
+    private static final List<String> ALLOWED_ORDER_SORT_FIELDS = List.of(
+            "createdAt",
+            "totalAmount",
+            "status",
+            "customerName",
+            "orderNumber"
+    );
 
-        String username = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+    private Sort buildSort(String sort) {
 
-        User currentUser = Optional.ofNullable(
-                userRepo.findUserByUsername(username)
-        ).orElseThrow(() ->
-                new UserNotFoundException("User not found"));
+        if (sort == null || sort.isBlank()) {
+            return Sort.unsorted();
+        }
 
-        return orderRepo.findByUser(currentUser);
+        String[] values = sort.split(",");
+
+        if (values.length != 2) {
+            throw new InvalidSortParameterException(
+                    "Sort format should be field,direction"
+            );
+        }
+
+        String field = values[0].trim();
+        String direction = values[1].trim();
+
+        if (!ALLOWED_ORDER_SORT_FIELDS.contains(field)) {
+            throw new InvalidSortParameterException(
+                    "Invalid sort field: " + field
+            );
+        }
+
+        if (!direction.equalsIgnoreCase("asc")
+                && !direction.equalsIgnoreCase("desc")) {
+
+            throw new InvalidSortParameterException(
+                    "Sort direction must be asc or desc"
+            );
+        }
+
+        return direction.equalsIgnoreCase("asc")
+                ? Sort.by(field).ascending()
+                : Sort.by(field).descending();
+    }
+
+    public Page<OrderSummaryDTO> getOrders(
+            int page,
+            int size,
+            String search,
+            OrderStatus status,
+            String sort
+    ) {
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                buildSort(sort)
+        );
+
+        return orderRepo
+                .findOrders(
+                        search,
+                        status,
+                        pageable
+                )
+                .map(this::mapToOrderSummaryDTO);
+    }
+
+    public Page<OrderSummaryDTO> getMyOrders(
+            int page,
+            int size,
+            OrderStatus status,
+            String sort
+    ) {
+
+        User currentUser = getCurrentUser();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                buildSort(sort)
+        );
+
+        Page<Order> orders;
+
+        if (status != null) {
+
+            orders = orderRepo.findByUserAndStatus(
+                    currentUser,
+                    status,
+                    pageable
+            );
+
+        } else {
+
+            orders = orderRepo.findByUser(
+                    currentUser,
+                    pageable
+            );
+        }
+
+        return orders.map(this::mapToOrderSummaryDTO);
     }
 
     @Transactional
-    public Order cancelOrder(Long orderId) {
+    public OrderSummaryDTO cancelOrder(Long orderId) {
 
-        Order order = orderRepo.findById(orderId)
-                .orElseThrow(() ->
-                        new OrderNotFoundException("Order not found: " + orderId));
+        Order order = getOrderEntity(orderId);
+        User currentUser = getCurrentUser();
 
-        String username = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        boolean isAdmin =
+                currentUser.getRole() == Role.ADMIN;
 
-        User currentUser = userRepo.findUserByUsername(username);
+        if (!isAdmin &&
+                !order.getUser().getId()
+                        .equals(currentUser.getId())) {
+
+            throw new AccessDeniedException(
+                    "You cannot cancel this order"
+            );
+        }
 
 
         if (order.getStatus() == OrderStatus.SHIPPED ||
@@ -226,11 +406,22 @@ public class OrderService {
                     product.getQuantity() + item.getQuantity()
             );
 
+            productRepo.save(product);
+
+            stockMovementService.recordMovement(
+                    product,
+                    item.getQuantity(),
+                    StockMovementType.RETURN,
+                    order.getOrderNumber()
+            );
+
         }
 
         order.setStatus(OrderStatus.CANCELLED);
 
-        return orderRepo.save(order);
+        Order savedOrder = orderRepo.save(order);
+
+        return mapToOrderSummaryDTO(savedOrder);
     }
 
 //    public CartSummaryResponse createCartSummary(OrderRequest orderRequest) {
